@@ -102,7 +102,7 @@ fn create_translation_to_coq(opts: &CliOptions) -> String {
         opts: config::Options {
             maybe_sysroot: Some(path::PathBuf::from(sysroot)),
             // Run in test mode to generate a translation of the tests.
-            test: true,
+            test: false,
             ..config::Options::default()
         },
         output_dir: None,

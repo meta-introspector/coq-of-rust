@@ -702,14 +702,42 @@ fn get_pure_from_stmt(statement: Rc<Expr>) -> Option<Rc<Expr>> {
 }
 
 pub(crate) fn compile_hir_id(env: &mut Env, hir_id: rustc_hir::hir_id::HirId) -> Rc<Expr> {
+    println!("compile_hir_id: {:?}", hir_id);
     let local_def_id = hir_id.owner.def_id;
     let thir = env.tcx.thir_body(local_def_id);
     let Ok((thir, expr_id)) = thir else {
-        panic!("thir failed to compile");
+        println!("{:#?}", thir);
+        // panic!("thir failed to compile");
+        return Rc::new(Expr {
+            kind: Rc::new(ExprKind::Message(format!(
+                "thir failed to compile: {:?}",
+                thir
+            ))),
+            ty: None,
+        });
     };
-    let thir = thir.borrow();
+    // wrap in try catch for the panic
+    // let thir = thir.borrow();
+    let result = std::panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        // Your code that might panic
+        thir.borrow()
 
-    crate::thir_expression::compile_expr(env, &thir, &expr_id)
+        // Additional logic...
+    }));
+
+    match result {
+        Ok(thir) => crate::thir_expression::compile_expr(env, &thir, &expr_id),
+        Err(error) => {
+            println!("thir failed to compile: {:?}", error);
+            return Rc::new(Expr {
+                kind: Rc::new(ExprKind::Message(format!(
+                    "thir failed to compile: {:?}",
+                    error
+                ))),
+                ty: None,
+            });
+        }
+    }
 }
 
 impl MatchArm {
