@@ -1,4 +1,4 @@
 [workspace]
-members = ["lib", "cli","nix-rust","libc"]
+members = ["lib", "cli","nix-rust","rust", "libc"]
 exclude = ["ink/integration-tests/erc20"]
 resolver = "2"

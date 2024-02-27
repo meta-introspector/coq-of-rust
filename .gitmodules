@@ -4,6 +4,7 @@
 [submodule "nix-rust"]
 	path = nix-rust
 	url = https://github.com/meta-introspector/nix-rust
+
 [submodule "libc"]
 	path = libc
 	url = https://github.com/rust-lang/libc
