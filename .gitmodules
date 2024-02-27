@@ -8,3 +8,6 @@
 [submodule "libc"]
 	path = libc
 	url = https://github.com/rust-lang/libc
+[submodule "rust"]
+	path = rust
+	url = https://github.com/meta-introspector/rust
