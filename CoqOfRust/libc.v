@@ -24,6 +24,20 @@ Module fixed_width_ints.
 End fixed_width_ints.
 
 Module unix.
+  Module linux_like.
+    Module linux.
+      Module gnu.
+        Module b64.
+          
+          Module x86_64.
+            Ltac c_char := exact u8.t.
+          End x86_64.
+        End b64.
+      End gnu.
+    End linux.
+  End linux_like.
+
+                                                   
   Ltac c_schar := exact i8.t.
   
   Ltac c_uchar := exact u8.t.
