@@ -1,4 +1,4 @@
-cargo coq-of-rust
+# run cargo coq-of-rust in the parent directory
 opam switch create coq-of-rust ocaml.5.1.0
 eval $(opam env --switch=coq-of-rust)
 opam repo add coq-released https://coq.inria.fr/opam/released
