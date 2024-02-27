@@ -24,6 +24,7 @@ Module fixed_width_ints.
 End fixed_width_ints.
 
 Module unix.
+
   Module linux_like.
     Module linux.
       Module gnu.
@@ -42,7 +43,7 @@ Module unix.
     End linux.
   End linux_like.
 
-                                                   
+
   Ltac c_schar := exact i8.t.
   
   Ltac c_uchar := exact u8.t.
@@ -96,8 +97,11 @@ Module unix.
     .
   End DIR.
   
+
   Ltac locale_t := exact (mut_ref i64.t).
-  (*i64.t.*)
+(*
+  Ltac locale_t := exact (mut_ref core.ffi.c_void.t).
+*)
   
   Module  group.
   Section group.
