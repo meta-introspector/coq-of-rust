@@ -28,9 +28,14 @@ Module unix.
     Module linux.
       Module gnu.
         Module b64.
-          
+
+          Ltac time_t := exact u32.t.
+                     
           Module x86_64.
+            
+            Ltac suseconds_t := exact i64.t.
             Ltac c_char := exact u8.t.
+            
           End x86_64.
         End b64.
       End gnu.
