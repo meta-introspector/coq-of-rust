@@ -1,3 +1,6 @@
 [submodule "ink"]
 	path = ink
 	url = https://github.com/formal-land/ink
+[submodule "nix-rust"]
+	path = nix-rust
+	url = https://github.com/meta-introspector/nix-rust
