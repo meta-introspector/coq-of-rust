@@ -80,3 +80,9 @@ End VarError.
 
 (* pub fn args() -> Args *)
 Parameter args : M Args.t.
+
+
+Definition var_os (key: string): string := "nixos".
+
+
+

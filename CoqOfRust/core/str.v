@@ -23,6 +23,9 @@ Module iter.
   Module SplitWhitespace.
     Parameter t : Set.
   End SplitWhitespace.
+  Module Split.
+    Parameter t : Set.
+  End Split.
 
   (* pub struct Chars<'a> { /* private fields */ } *)
   Module Chars.

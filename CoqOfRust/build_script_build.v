@@ -49,6 +49,378 @@ Definition CHECK_CFG_EXTRA
     M.alloc (pointer_coercion "Unsize" (borrow α18))).
 
 (*
+fn rustc_minor_nightly() -> (u32, bool) {
+    macro_rules! otry {
+        ($e:expr) => {
+            match $e {
+                Some(e) => e,
+                None => panic!("Failed to get rustc version"),
+            }
+        };
+    }
+
+    let rustc = otry!(env::var_os("RUSTC"));
+    let output = Command::new(rustc)
+        .arg("--version")
+        .output()
+        .ok()
+        .expect("Failed to get rustc version");
+    if !output.status.success() {
+        panic!(
+            "failed to run rustc: {}",
+            String::from_utf8_lossy(output.stderr.as_slice())
+        );
+    }
+
+    let version = otry!(str::from_utf8(&output.stdout).ok());
+    let mut pieces = version.split('.');
+
+    if pieces.next() != Some("rustc 1") {
+        panic!("Failed to get rustc version");
+    }
+
+    let minor = pieces.next();
+
+    // If `rustc` was built from a tarball, its version string
+    // will have neither a git hash nor a commit date
+    // (e.g. "rustc 1.39.0"). Treat this case as non-nightly,
+    // since a nightly build should either come from CI
+    // or a git checkout
+    let nightly_raw = otry!(pieces.next()).split('-').nth(1);
+    let nightly = nightly_raw
+        .map(|raw| raw.starts_with("dev") || raw.starts_with("nightly"))
+        .unwrap_or(false);
+    let minor = otry!(otry!(minor).parse().ok());
+
+    (minor, nightly)
+}
+*)
+Definition rustc_minor_nightly : M (u32.t * bool.t) :=
+  let* rustc : M.Val std.ffi.os_str.OsString.t :=
+    let* α0 : ref str.t := M.read (mk_str "RUSTC") in
+    let* α1 : core.option.Option.t std.ffi.os_str.OsString.t :=
+      M.call (std.env.var_os α0) in
+    let* α2 : M.Val (core.option.Option.t std.ffi.os_str.OsString.t) :=
+      M.alloc α1 in
+    let* α3 : M.Val std.ffi.os_str.OsString.t :=
+      match_operator
+        α2
+        [
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.Some _ =>
+              let γ0_0 := core.option.Option.Get_Some_0 γ in
+              let* e := M.copy γ0_0 in
+              M.pure e
+            | _ => M.break_match
+            end) :
+            M (M.Val std.ffi.os_str.OsString.t);
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.None =>
+              let* α0 : ref str.t :=
+                M.read (mk_str "Failed to get rustc version") in
+              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+              let* α2 : std.ffi.os_str.OsString.t := never_to_any α1 in
+              M.alloc α2
+            | _ => M.break_match
+            end) :
+            M (M.Val std.ffi.os_str.OsString.t)
+        ] in
+    M.copy α3 in
+  let* output : M.Val std.process.Output.t :=
+    let* α0 : std.ffi.os_str.OsString.t := M.read rustc in
+    let* α1 : std.process.Command.t :=
+      M.call (std.process.Command.t::["new"] α0) in
+    let* α2 : M.Val std.process.Command.t := M.alloc α1 in
+    let* α3 : ref str.t := M.read (mk_str "--version") in
+    let* α4 : mut_ref std.process.Command.t :=
+      M.call (std.process.Command.t::["arg"] (borrow_mut α2) α3) in
+    let* α5 : core.result.Result.t std.process.Output.t std.io.error.Error.t :=
+      M.call (std.process.Command.t::["output"] α4) in
+    let* α6 : core.option.Option.t std.process.Output.t :=
+      M.call
+        ((core.result.Result.t
+              std.process.Output.t
+              std.io.error.Error.t)::["ok"]
+          α5) in
+    let* α7 : ref str.t := M.read (mk_str "Failed to get rustc version") in
+    let* α8 : std.process.Output.t :=
+      M.call ((core.option.Option.t std.process.Output.t)::["expect"] α6 α7) in
+    M.alloc α8 in
+  let* _ : M.Val unit :=
+    let* α0 : bool.t :=
+      M.call
+        (std.process.ExitStatus.t::["success"]
+          (borrow (std.process.Output.Get_status output))) in
+    let* α1 : M.Val bool.t := M.alloc (UnOp.not α0) in
+    let* α2 : bool.t := M.read (use α1) in
+    if α2 then
+      let* α0 : ref str.t := M.read (mk_str "failed to run rustc: ") in
+      let* α1 : M.Val (array (ref str.t)) := M.alloc [ α0 ] in
+      let* α2 : ref (slice u8.t) :=
+        M.call
+          ((alloc.vec.Vec.t u8.t alloc.alloc.Global.t)::["as_slice"]
+            (borrow (std.process.Output.Get_stderr output))) in
+      let* α3 : alloc.borrow.Cow.t str.t :=
+        M.call (alloc.string.String.t::["from_utf8_lossy"] α2) in
+      let* α4 : M.Val (alloc.borrow.Cow.t str.t) := M.alloc α3 in
+      let* α5 : core.fmt.rt.Argument.t :=
+        M.call (core.fmt.rt.Argument.t::["new_display"] (borrow α4)) in
+      let* α6 : M.Val (array core.fmt.rt.Argument.t) := M.alloc [ α5 ] in
+      let* α7 : core.fmt.Arguments.t :=
+        M.call
+          (core.fmt.Arguments.t::["new_v1"]
+            (pointer_coercion "Unsize" (borrow α1))
+            (pointer_coercion "Unsize" (borrow α6))) in
+      let* α8 : never.t := M.call (core.panicking.panic_fmt α7) in
+      let* α9 : unit := never_to_any α8 in
+      M.alloc α9
+    else
+      M.alloc tt in
+  let* version : M.Val (ref str.t) :=
+    let* α0 : (ref (alloc.vec.Vec.t u8.t alloc.alloc.Global.t)) -> M (ref _) :=
+      ltac:(M.get_method (fun ℐ =>
+        core.ops.deref.Deref.deref
+          (Self := alloc.vec.Vec.t u8.t alloc.alloc.Global.t)
+          (Trait := ℐ))) in
+    let* α1 : ref (slice u8.t) :=
+      M.call (α0 (borrow (std.process.Output.Get_stdout output))) in
+    let* α2 : core.result.Result.t (ref str.t) core.str.error.Utf8Error.t :=
+      M.call (core.str.converts.from_utf8 α1) in
+    let* α3 : core.option.Option.t (ref str.t) :=
+      M.call
+        ((core.result.Result.t (ref str.t) core.str.error.Utf8Error.t)::["ok"]
+          α2) in
+    let* α4 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α3 in
+    let* α5 : M.Val (ref str.t) :=
+      match_operator
+        α4
+        [
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.Some _ =>
+              let γ0_0 := core.option.Option.Get_Some_0 γ in
+              let* e := M.copy γ0_0 in
+              M.pure e
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t));
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.None =>
+              let* α0 : ref str.t :=
+                M.read (mk_str "Failed to get rustc version") in
+              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+              let* α2 : ref str.t := never_to_any α1 in
+              M.alloc α2
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t))
+        ] in
+    M.copy α5 in
+  let* pieces : M.Val (core.str.iter.Split.t char.t) :=
+    let* α0 : ref str.t := M.read version in
+    let* α1 : core.str.iter.Split.t char.t :=
+      M.call (str.t::["split"] α0 "."%char) in
+    M.alloc α1 in
+  let* _ : M.Val unit :=
+    let* α0 :
+        (ref (core.option.Option.t (ref str.t))) ->
+          (ref (core.option.Option.t (ref str.t))) ->
+          M bool.t :=
+      ltac:(M.get_method (fun ℐ =>
+        core.cmp.PartialEq.ne
+          (Self := core.option.Option.t (ref str.t))
+          (Rhs := core.option.Option.t (ref str.t))
+          (Trait := ℐ))) in
+    let* α1 :
+        (mut_ref (core.str.iter.Split.t char.t)) ->
+          M (core.option.Option.t _) :=
+      ltac:(M.get_method (fun ℐ =>
+        core.iter.traits.iterator.Iterator.next
+          (Self := core.str.iter.Split.t char.t)
+          (Trait := ℐ))) in
+    let* α2 : core.option.Option.t (ref str.t) :=
+      M.call (α1 (borrow_mut pieces)) in
+    let* α3 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α2 in
+    let* α4 : ref str.t := M.read (mk_str "rustc 1") in
+    let* α5 : M.Val (core.option.Option.t (ref str.t)) :=
+      M.alloc (core.option.Option.Some α4) in
+    let* α6 : bool.t := M.call (α0 (borrow α3) (borrow α5)) in
+    let* α7 : M.Val bool.t := M.alloc α6 in
+    let* α8 : bool.t := M.read (use α7) in
+    if α8 then
+      let* α0 : ref str.t := M.read (mk_str "Failed to get rustc version") in
+      let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+      let* α2 : unit := never_to_any α1 in
+      M.alloc α2
+    else
+      M.alloc tt in
+  let* minor : M.Val (core.option.Option.t (ref str.t)) :=
+    let* α0 :
+        (mut_ref (core.str.iter.Split.t char.t)) ->
+          M (core.option.Option.t _) :=
+      ltac:(M.get_method (fun ℐ =>
+        core.iter.traits.iterator.Iterator.next
+          (Self := core.str.iter.Split.t char.t)
+          (Trait := ℐ))) in
+    let* α1 : core.option.Option.t (ref str.t) :=
+      M.call (α0 (borrow_mut pieces)) in
+    M.alloc α1 in
+  let* nightly_raw : M.Val (core.option.Option.t (ref str.t)) :=
+    let* α0 :
+        (mut_ref (core.str.iter.Split.t char.t)) ->
+          usize.t ->
+          M (core.option.Option.t _) :=
+      ltac:(M.get_method (fun ℐ =>
+        core.iter.traits.iterator.Iterator.nth
+          (Self := core.str.iter.Split.t char.t)
+          (Trait := ℐ))) in
+    let* α1 :
+        (mut_ref (core.str.iter.Split.t char.t)) ->
+          M (core.option.Option.t _) :=
+      ltac:(M.get_method (fun ℐ =>
+        core.iter.traits.iterator.Iterator.next
+          (Self := core.str.iter.Split.t char.t)
+          (Trait := ℐ))) in
+    let* α2 : core.option.Option.t (ref str.t) :=
+      M.call (α1 (borrow_mut pieces)) in
+    let* α3 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α2 in
+    let* α4 : M.Val (ref str.t) :=
+      match_operator
+        α3
+        [
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.Some _ =>
+              let γ0_0 := core.option.Option.Get_Some_0 γ in
+              let* e := M.copy γ0_0 in
+              M.pure e
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t));
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.None =>
+              let* α0 : ref str.t :=
+                M.read (mk_str "Failed to get rustc version") in
+              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+              let* α2 : ref str.t := never_to_any α1 in
+              M.alloc α2
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t))
+        ] in
+    let* α5 : ref str.t := M.read α4 in
+    let* α6 : core.str.iter.Split.t char.t :=
+      M.call (str.t::["split"] α5 "-"%char) in
+    let* α7 : M.Val (core.str.iter.Split.t char.t) := M.alloc α6 in
+    let* α8 : core.option.Option.t (ref str.t) :=
+      M.call (α0 (borrow_mut α7) ((Integer.of_Z 1) : usize.t)) in
+    M.alloc α8 in
+  let* nightly : M.Val bool.t :=
+    let* α0 : core.option.Option.t (ref str.t) := M.read nightly_raw in
+    let* α1 : core.option.Option.t bool.t :=
+      M.call
+        ((core.option.Option.t (ref str.t))::["map"]
+          α0
+          (fun (α0 : ref str.t) =>
+            (let* α0 := M.alloc α0 in
+            match_operator
+              α0
+              [
+                fun γ =>
+                  (let* raw := M.copy γ in
+                  let* α0 : ref str.t := M.read raw in
+                  let* α1 : ref str.t := M.read (mk_str "dev") in
+                  let* α2 : bool.t := M.call (str.t::["starts_with"] α0 α1) in
+                  let* α3 : ref str.t := M.read raw in
+                  let* α4 : ref str.t := M.read (mk_str "nightly") in
+                  let* α5 : bool.t := M.call (str.t::["starts_with"] α3 α4) in
+                  M.pure (BinOp.Pure.or α2 α5)) :
+                  M bool.t
+              ]) :
+            M bool.t)) in
+    let* α2 : bool.t :=
+      M.call ((core.option.Option.t bool.t)::["unwrap_or"] α1 false) in
+    M.alloc α2 in
+  let* minor : M.Val u32.t :=
+    let* α0 : M.Val (ref str.t) :=
+      match_operator
+        minor
+        [
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.Some _ =>
+              let γ0_0 := core.option.Option.Get_Some_0 γ in
+              let* e := M.copy γ0_0 in
+              M.pure e
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t));
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.None =>
+              let* α0 : ref str.t :=
+                M.read (mk_str "Failed to get rustc version") in
+              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+              let* α2 : ref str.t := never_to_any α1 in
+              M.alloc α2
+            | _ => M.break_match
+            end) :
+            M (M.Val (ref str.t))
+        ] in
+    let* α1 : ref str.t := M.read α0 in
+    let* α2 : core.result.Result.t u32.t core.num.error.ParseIntError.t :=
+      M.call (str.t::["parse"] α1) in
+    let* α3 : core.option.Option.t u32.t :=
+      M.call
+        ((core.result.Result.t u32.t core.num.error.ParseIntError.t)::["ok"]
+          α2) in
+    let* α4 : M.Val (core.option.Option.t u32.t) := M.alloc α3 in
+    let* α5 : M.Val u32.t :=
+      match_operator
+        α4
+        [
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.Some _ =>
+              let γ0_0 := core.option.Option.Get_Some_0 γ in
+              let* e := M.copy γ0_0 in
+              M.pure e
+            | _ => M.break_match
+            end) :
+            M (M.Val u32.t);
+          fun γ =>
+            (let* α0 := M.read γ in
+            match α0 with
+            | core.option.Option.None =>
+              let* α0 : ref str.t :=
+                M.read (mk_str "Failed to get rustc version") in
+              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
+              let* α2 : u32.t := never_to_any α1 in
+              M.alloc α2
+            | _ => M.break_match
+            end) :
+            M (M.Val u32.t)
+        ] in
+    M.copy α5 in
+  let* α0 : u32.t := M.read minor in
+  let* α1 : bool.t := M.read nightly in
+  let* α0 : M.Val (u32.t * bool.t) := M.alloc (α0, α1) in
+  M.read α0.
+
+(*
 fn main() {
     // Avoid unnecessary re-building.
     println!("cargo:rerun-if-changed=build.rs");
@@ -142,7 +514,7 @@ Definition main : M unit :=
       let* α3 : unit := M.call (std.io.stdio._print α2) in
       M.alloc α3 in
     M.alloc tt in
-  let* α0 : u32.t * bool.t := M.call build_script_build.rustc_minor_nightly in
+  let* α0 : u32.t * bool.t := M.call rustc_minor_nightly in
   let* α1 : M.Val (u32.t * bool.t) := M.alloc α0 in
   let* α0 : M.Val unit :=
     match_operator
@@ -787,377 +1159,6 @@ Definition main : M unit :=
       ] in
   M.read α0.
 
-(*
-fn rustc_minor_nightly() -> (u32, bool) {
-    macro_rules! otry {
-        ($e:expr) => {
-            match $e {
-                Some(e) => e,
-                None => panic!("Failed to get rustc version"),
-            }
-        };
-    }
-
-    let rustc = otry!(env::var_os("RUSTC"));
-    let output = Command::new(rustc)
-        .arg("--version")
-        .output()
-        .ok()
-        .expect("Failed to get rustc version");
-    if !output.status.success() {
-        panic!(
-            "failed to run rustc: {}",
-            String::from_utf8_lossy(output.stderr.as_slice())
-        );
-    }
-
-    let version = otry!(str::from_utf8(&output.stdout).ok());
-    let mut pieces = version.split('.');
-
-    if pieces.next() != Some("rustc 1") {
-        panic!("Failed to get rustc version");
-    }
-
-    let minor = pieces.next();
-
-    // If `rustc` was built from a tarball, its version string
-    // will have neither a git hash nor a commit date
-    // (e.g. "rustc 1.39.0"). Treat this case as non-nightly,
-    // since a nightly build should either come from CI
-    // or a git checkout
-    let nightly_raw = otry!(pieces.next()).split('-').nth(1);
-    let nightly = nightly_raw
-        .map(|raw| raw.starts_with("dev") || raw.starts_with("nightly"))
-        .unwrap_or(false);
-    let minor = otry!(otry!(minor).parse().ok());
-
-    (minor, nightly)
-}
-*)
-Definition rustc_minor_nightly : M (u32.t * bool.t) :=
-  let* rustc : M.Val std.ffi.os_str.OsString.t :=
-    let* α0 : ref str.t := M.read (mk_str "RUSTC") in
-    let* α1 : core.option.Option.t std.ffi.os_str.OsString.t :=
-      M.call (std.env.var_os α0) in
-    let* α2 : M.Val (core.option.Option.t std.ffi.os_str.OsString.t) :=
-      M.alloc α1 in
-    let* α3 : M.Val std.ffi.os_str.OsString.t :=
-      match_operator
-        α2
-        [
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.Some _ =>
-              let γ0_0 := core.option.Option.Get_Some_0 γ in
-              let* e := M.copy γ0_0 in
-              M.pure e
-            | _ => M.break_match
-            end) :
-            M (M.Val std.ffi.os_str.OsString.t);
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.None =>
-              let* α0 : ref str.t :=
-                M.read (mk_str "Failed to get rustc version") in
-              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-              let* α2 : std.ffi.os_str.OsString.t := never_to_any α1 in
-              M.alloc α2
-            | _ => M.break_match
-            end) :
-            M (M.Val std.ffi.os_str.OsString.t)
-        ] in
-    M.copy α3 in
-  let* output : M.Val std.process.Output.t :=
-    let* α0 : std.ffi.os_str.OsString.t := M.read rustc in
-    let* α1 : std.process.Command.t :=
-      M.call (std.process.Command.t::["new"] α0) in
-    let* α2 : M.Val std.process.Command.t := M.alloc α1 in
-    let* α3 : ref str.t := M.read (mk_str "--version") in
-    let* α4 : mut_ref std.process.Command.t :=
-      M.call (std.process.Command.t::["arg"] (borrow_mut α2) α3) in
-    let* α5 : core.result.Result.t std.process.Output.t std.io.error.Error.t :=
-      M.call (std.process.Command.t::["output"] α4) in
-    let* α6 : core.option.Option.t std.process.Output.t :=
-      M.call
-        ((core.result.Result.t
-              std.process.Output.t
-              std.io.error.Error.t)::["ok"]
-          α5) in
-    let* α7 : ref str.t := M.read (mk_str "Failed to get rustc version") in
-    let* α8 : std.process.Output.t :=
-      M.call ((core.option.Option.t std.process.Output.t)::["expect"] α6 α7) in
-    M.alloc α8 in
-  let* _ : M.Val unit :=
-    let* α0 : bool.t :=
-      M.call
-        (std.process.ExitStatus.t::["success"]
-          (borrow (std.process.Output.Get_status output))) in
-    let* α1 : M.Val bool.t := M.alloc (UnOp.not α0) in
-    let* α2 : bool.t := M.read (use α1) in
-    if α2 then
-      let* α0 : ref str.t := M.read (mk_str "failed to run rustc: ") in
-      let* α1 : M.Val (array (ref str.t)) := M.alloc [ α0 ] in
-      let* α2 : ref (slice u8.t) :=
-        M.call
-          ((alloc.vec.Vec.t u8.t alloc.alloc.Global.t)::["as_slice"]
-            (borrow (std.process.Output.Get_stderr output))) in
-      let* α3 : alloc.borrow.Cow.t str.t :=
-        M.call (alloc.string.String.t::["from_utf8_lossy"] α2) in
-      let* α4 : M.Val (alloc.borrow.Cow.t str.t) := M.alloc α3 in
-      let* α5 : core.fmt.rt.Argument.t :=
-        M.call (core.fmt.rt.Argument.t::["new_display"] (borrow α4)) in
-      let* α6 : M.Val (array core.fmt.rt.Argument.t) := M.alloc [ α5 ] in
-      let* α7 : core.fmt.Arguments.t :=
-        M.call
-          (core.fmt.Arguments.t::["new_v1"]
-            (pointer_coercion "Unsize" (borrow α1))
-            (pointer_coercion "Unsize" (borrow α6))) in
-      let* α8 : never.t := M.call (core.panicking.panic_fmt α7) in
-      let* α9 : unit := never_to_any α8 in
-      M.alloc α9
-    else
-      M.alloc tt in
-  let* version : M.Val (ref str.t) :=
-    let* α0 : (ref (alloc.vec.Vec.t u8.t alloc.alloc.Global.t)) -> M (ref _) :=
-      ltac:(M.get_method (fun ℐ =>
-        core.ops.deref.Deref.deref
-          (Self := alloc.vec.Vec.t u8.t alloc.alloc.Global.t)
-          (Trait := ℐ))) in
-    let* α1 : ref (slice u8.t) :=
-      M.call (α0 (borrow (std.process.Output.Get_stdout output))) in
-    let* α2 : core.result.Result.t (ref str.t) core.str.error.Utf8Error.t :=
-      M.call (core.str.converts.from_utf8 α1) in
-    let* α3 : core.option.Option.t (ref str.t) :=
-      M.call
-        ((core.result.Result.t (ref str.t) core.str.error.Utf8Error.t)::["ok"]
-          α2) in
-    let* α4 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α3 in
-    let* α5 : M.Val (ref str.t) :=
-      match_operator
-        α4
-        [
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.Some _ =>
-              let γ0_0 := core.option.Option.Get_Some_0 γ in
-              let* e := M.copy γ0_0 in
-              M.pure e
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t));
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.None =>
-              let* α0 : ref str.t :=
-                M.read (mk_str "Failed to get rustc version") in
-              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-              let* α2 : ref str.t := never_to_any α1 in
-              M.alloc α2
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t))
-        ] in
-    M.copy α5 in
-  let* pieces : M.Val (core.str.iter.Split.t char.t) :=
-    let* α0 : ref str.t := M.read version in
-    let* α1 : core.str.iter.Split.t char.t :=
-      M.call (str.t::["split"] α0 "."%char) in
-    M.alloc α1 in
-  let* _ : M.Val unit :=
-    let* α0 :
-        (ref (core.option.Option.t (ref str.t))) ->
-          (ref (core.option.Option.t (ref str.t))) ->
-          M bool.t :=
-      ltac:(M.get_method (fun ℐ =>
-        core.cmp.PartialEq.ne
-          (Self := core.option.Option.t (ref str.t))
-          (Rhs := core.option.Option.t (ref str.t))
-          (Trait := ℐ))) in
-    let* α1 :
-        (mut_ref (core.str.iter.Split.t char.t)) ->
-          M (core.option.Option.t _) :=
-      ltac:(M.get_method (fun ℐ =>
-        core.iter.traits.iterator.Iterator.next
-          (Self := core.str.iter.Split.t char.t)
-          (Trait := ℐ))) in
-    let* α2 : core.option.Option.t (ref str.t) :=
-      M.call (α1 (borrow_mut pieces)) in
-    let* α3 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α2 in
-    let* α4 : ref str.t := M.read (mk_str "rustc 1") in
-    let* α5 : M.Val (core.option.Option.t (ref str.t)) :=
-      M.alloc (core.option.Option.Some α4) in
-    let* α6 : bool.t := M.call (α0 (borrow α3) (borrow α5)) in
-    let* α7 : M.Val bool.t := M.alloc α6 in
-    let* α8 : bool.t := M.read (use α7) in
-    if α8 then
-      let* α0 : ref str.t := M.read (mk_str "Failed to get rustc version") in
-      let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-      let* α2 : unit := never_to_any α1 in
-      M.alloc α2
-    else
-      M.alloc tt in
-  let* minor : M.Val (core.option.Option.t (ref str.t)) :=
-    let* α0 :
-        (mut_ref (core.str.iter.Split.t char.t)) ->
-          M (core.option.Option.t _) :=
-      ltac:(M.get_method (fun ℐ =>
-        core.iter.traits.iterator.Iterator.next
-          (Self := core.str.iter.Split.t char.t)
-          (Trait := ℐ))) in
-    let* α1 : core.option.Option.t (ref str.t) :=
-      M.call (α0 (borrow_mut pieces)) in
-    M.alloc α1 in
-  let* nightly_raw : M.Val (core.option.Option.t (ref str.t)) :=
-    let* α0 :
-        (mut_ref (core.str.iter.Split.t char.t)) ->
-          usize.t ->
-          M (core.option.Option.t _) :=
-      ltac:(M.get_method (fun ℐ =>
-        core.iter.traits.iterator.Iterator.nth
-          (Self := core.str.iter.Split.t char.t)
-          (Trait := ℐ))) in
-    let* α1 :
-        (mut_ref (core.str.iter.Split.t char.t)) ->
-          M (core.option.Option.t _) :=
-      ltac:(M.get_method (fun ℐ =>
-        core.iter.traits.iterator.Iterator.next
-          (Self := core.str.iter.Split.t char.t)
-          (Trait := ℐ))) in
-    let* α2 : core.option.Option.t (ref str.t) :=
-      M.call (α1 (borrow_mut pieces)) in
-    let* α3 : M.Val (core.option.Option.t (ref str.t)) := M.alloc α2 in
-    let* α4 : M.Val (ref str.t) :=
-      match_operator
-        α3
-        [
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.Some _ =>
-              let γ0_0 := core.option.Option.Get_Some_0 γ in
-              let* e := M.copy γ0_0 in
-              M.pure e
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t));
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.None =>
-              let* α0 : ref str.t :=
-                M.read (mk_str "Failed to get rustc version") in
-              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-              let* α2 : ref str.t := never_to_any α1 in
-              M.alloc α2
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t))
-        ] in
-    let* α5 : ref str.t := M.read α4 in
-    let* α6 : core.str.iter.Split.t char.t :=
-      M.call (str.t::["split"] α5 "-"%char) in
-    let* α7 : M.Val (core.str.iter.Split.t char.t) := M.alloc α6 in
-    let* α8 : core.option.Option.t (ref str.t) :=
-      M.call (α0 (borrow_mut α7) ((Integer.of_Z 1) : usize.t)) in
-    M.alloc α8 in
-  let* nightly : M.Val bool.t :=
-    let* α0 : core.option.Option.t (ref str.t) := M.read nightly_raw in
-    let* α1 : core.option.Option.t bool.t :=
-      M.call
-        ((core.option.Option.t (ref str.t))::["map"]
-          α0
-          (fun (α0 : ref str.t) =>
-            (let* α0 := M.alloc α0 in
-            match_operator
-              α0
-              [
-                fun γ =>
-                  (let* raw := M.copy γ in
-                  let* α0 : ref str.t := M.read raw in
-                  let* α1 : ref str.t := M.read (mk_str "dev") in
-                  let* α2 : bool.t := M.call (str.t::["starts_with"] α0 α1) in
-                  let* α3 : ref str.t := M.read raw in
-                  let* α4 : ref str.t := M.read (mk_str "nightly") in
-                  let* α5 : bool.t := M.call (str.t::["starts_with"] α3 α4) in
-                  M.pure (BinOp.Pure.or α2 α5)) :
-                  M bool.t
-              ]) :
-            M bool.t)) in
-    let* α2 : bool.t :=
-      M.call ((core.option.Option.t bool.t)::["unwrap_or"] α1 false) in
-    M.alloc α2 in
-  let* minor : M.Val u32.t :=
-    let* α0 : M.Val (ref str.t) :=
-      match_operator
-        minor
-        [
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.Some _ =>
-              let γ0_0 := core.option.Option.Get_Some_0 γ in
-              let* e := M.copy γ0_0 in
-              M.pure e
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t));
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.None =>
-              let* α0 : ref str.t :=
-                M.read (mk_str "Failed to get rustc version") in
-              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-              let* α2 : ref str.t := never_to_any α1 in
-              M.alloc α2
-            | _ => M.break_match
-            end) :
-            M (M.Val (ref str.t))
-        ] in
-    let* α1 : ref str.t := M.read α0 in
-    let* α2 : core.result.Result.t u32.t core.num.error.ParseIntError.t :=
-      M.call (str.t::["parse"] α1) in
-    let* α3 : core.option.Option.t u32.t :=
-      M.call
-        ((core.result.Result.t u32.t core.num.error.ParseIntError.t)::["ok"]
-          α2) in
-    let* α4 : M.Val (core.option.Option.t u32.t) := M.alloc α3 in
-    let* α5 : M.Val u32.t :=
-      match_operator
-        α4
-        [
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.Some _ =>
-              let γ0_0 := core.option.Option.Get_Some_0 γ in
-              let* e := M.copy γ0_0 in
-              M.pure e
-            | _ => M.break_match
-            end) :
-            M (M.Val u32.t);
-          fun γ =>
-            (let* α0 := M.read γ in
-            match α0 with
-            | core.option.Option.None =>
-              let* α0 : ref str.t :=
-                M.read (mk_str "Failed to get rustc version") in
-              let* α1 : never.t := M.call (std.panicking.begin_panic α0) in
-              let* α2 : u32.t := never_to_any α1 in
-              M.alloc α2
-            | _ => M.break_match
-            end) :
-            M (M.Val u32.t)
-        ] in
-    M.copy α5 in
-  let* α0 : u32.t := M.read minor in
-  let* α1 : bool.t := M.read nightly in
-  let* α0 : M.Val (u32.t * bool.t) := M.alloc (α0, α1) in
-  M.read α0.
 
 (*
 fn which_freebsd() -> Option<i32> {
