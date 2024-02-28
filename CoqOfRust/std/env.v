@@ -82,7 +82,15 @@ End VarError.
 Parameter args : M Args.t.
 
 
-Definition var_os (key: string): string := "nixos".
+(*Definition var_os (x: string) : M (ref str.t) := M.pure mk_str "nixos".*)
+
+Definition var_os  (key: string): option ffi.os_str.OsString.t :=
+    (* match Environment.get_string k with *)
+    (* | Some s => Some (to_os_str s) *)
+  (* | None => None end *)
+  None .
+
+
 
 
 
